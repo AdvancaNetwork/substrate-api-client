@@ -21,6 +21,7 @@ use std::thread;
 use ws::connect;
 
 use client::*;
+use log::error;
 
 mod client;
 pub mod json_req;
@@ -50,13 +51,14 @@ fn start_rpc_client_thread(
     let _client = thread::Builder::new()
         .name("client".to_owned())
         .spawn(move || {
-            connect(url, |out| RpcClient {
+            if let Err(e) = connect(url, |out| RpcClient {
                 out,
                 request: jsonreq.clone(),
                 result: result_in.clone(),
                 on_message_fn,
-            })
-            .unwrap()
+            }) {
+                error!("websocket connect error {:?}", e);
+            }
         })
         .unwrap();
 }

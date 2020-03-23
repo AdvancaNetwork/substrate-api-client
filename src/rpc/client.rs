@@ -19,7 +19,7 @@ use std::sync::mpsc::Sender as ThreadOut;
 
 use crate::rpc::json_req::REQUEST_TRANSFER;
 use log::{debug, error, info};
-use ws::{CloseCode, Handler, Handshake, Message, Result, Sender};
+use ws::{CloseCode, Handler, Handshake, Message, Result, Sender, Error, ErrorKind};
 
 pub type OnMessageFn = fn(msg: Message, out: Sender, result: ThreadOut<String>) -> Result<()>;
 
@@ -40,6 +40,16 @@ impl Handler for RpcClient {
     fn on_message(&mut self, msg: Message) -> Result<()> {
         (self.on_message_fn)(msg, self.out.clone(), self.result.clone())
     }
+
+    fn on_error(&mut self, err: Error) {
+        if let ErrorKind::Io(ref err) = err.kind {
+            if let Some(104) = err.raw_os_error() {
+                return;
+            }
+        }
+
+        error!("{:?}", err);
+    }
 }
 
 pub fn on_get_request_msg(msg: Message, out: Sender, result: ThreadOut<String>) -> Result<()> {
@@ -56,8 +66,13 @@ pub fn on_get_request_msg(msg: Message, out: Sender, result: ThreadOut<String>) 
 pub fn on_subscription_msg(msg: Message, _out: Sender, result: ThreadOut<String>) -> Result<()> {
     info!("got on_subscription_msg");
     debug!("{}", msg);
-    let retstr = msg.as_text().unwrap();
-    let value: serde_json::Value = serde_json::from_str(retstr).unwrap();
+    let retstr = msg.as_text()?;
+    let value: serde_json::Value = match serde_json::from_str(retstr){
+        Ok(v) => v,
+        Err(e) => {
+            return Err(Box::new(e).into());
+        }
+    };
     match value["id"].as_str() {
         Some(_idstr) => {}
         _ => {
@@ -69,7 +84,11 @@ pub fn on_subscription_msg(msg: Message, _out: Sender, result: ThreadOut<String>
                     let changes = &value["params"]["result"]["changes"];
 
                     match changes[0][1].as_str() {
-                        Some(change_set) => result.send(change_set.to_owned()).unwrap(),
+                        Some(change_set) => {
+                            if let Err(e) = result.send(change_set.to_owned()) {
+                                return Err(Box::new(e).into());
+                            };
+                        },
                         None => println!("No events happened"),
                     };
                 }
@@ -108,14 +127,16 @@ pub fn on_extrinsic_msg(msg: Message, out: Sender, result: ThreadOut<String>) ->
                                 value["params"]["result"]["finalized"].as_str().unwrap()
                             );
                             // return result to calling thread
-                            result
+                            let result = result
                                 .send(
                                     value["params"]["result"]["finalized"]
                                         .as_str()
                                         .unwrap()
                                         .to_string(),
-                                )
-                                .unwrap();
+                                );
+                            if let Err(e) = result {
+                                return Err(Box::new(e).into());
+                            }
                             // we've reached the end of the flow. return
                             out.close(CloseCode::Normal).unwrap();
                         }
