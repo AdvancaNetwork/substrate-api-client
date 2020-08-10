@@ -17,7 +17,7 @@
 
 use log::{debug, error, info, warn};
 use std::sync::mpsc::Sender as ThreadOut;
-use ws::{CloseCode, Handler, Handshake, Message, Result, Sender};
+use ws::{CloseCode, Handler, Handshake, Message, Result, Sender, Error, ErrorKind};
 
 #[derive(Debug, PartialEq)]
 pub enum XtStatus {
