@@ -1,4 +1,7 @@
 # substrate-api-client
+
+![badge](https://img.shields.io/badge/substrate-2.0.0--alpha.7-success)
+
 <p align="center">
 <img src=./web3_foundation_grants_badge_black.svg width = 400>
 </p>
@@ -9,6 +12,7 @@ substrate-api-client a library written in Rust for connecting to the substrate's
 * supports composing extrinsics for `no_std` builds
 * Watch events and execute code upon events.
 * Parse and print the node metadata.
+* currently only supports [node-template](https://github.com/substrate-developer-hub/substrate-node-template) based chains (doesn't support the Account type of Polkadot/Kusama without patches)
 
 ## Prerequisites
 
@@ -24,14 +28,14 @@ For more information, please refer to the [substrate](https://github.com/parityt
 
 ## Substrate node
 
-To execute the examples, a running substrate node is needed. The examples have been tested with [revision f17d023 of substrate](https://github.com/paritytech/substrate/commit/f17d023bbe179f15678ac9989f471c9b18917e17). Alternatively, a dedicated test node can be found at https://github.com/scs/substrate-test-nodes.
+To execute the examples, a running substrate node is needed. A slightly extended node-template can be found at https://github.com/scs/substrate-test-nodes.
 
 
 To build the test node, execute the following steps:
 
-    git clone https://github.com/scs/substrate-test-nodes
+    git clone https://github.com/scs/substrate-node-template
     cd substrate-test-nodes/
-    git checkout api-M1.1
+    git checkout v2.0.0-alpha.6-api-client
     cargo build --release
 
 Run the node:

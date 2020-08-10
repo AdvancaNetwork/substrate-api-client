@@ -19,11 +19,11 @@
 use clap::{load_yaml, App};
 
 use keyring::AccountKeyring;
-use node_runtime::{BalancesCall, Call};
+use node_template_runtime::{BalancesCall, Call, Header};
 use sp_core::crypto::Pair;
 
 use substrate_api_client::{
-    compose_extrinsic_offline, extrinsic::xt_primitives::UncheckedExtrinsicV4, Api,
+    compose_extrinsic_offline, extrinsic::xt_primitives::UncheckedExtrinsicV4, Api, XtStatus,
 };
 
 fn main() {
@@ -34,6 +34,11 @@ fn main() {
     let from = AccountKeyring::Alice.pair();
     let api = Api::new(format!("ws://{}", url)).set_signer(from);
 
+    // Information for Era for mortal transactions
+    let head = api.get_finalized_head().unwrap();
+    let h: Header = api.get_header(Some(head)).unwrap();
+    let period = 5;
+
     println!(
         "[+] Alice's Account Nonce is {}\n",
         api.get_nonce().unwrap()
@@ -43,19 +48,24 @@ fn main() {
     let to = AccountKeyring::Bob.to_account_id();
 
     // compose the extrinsic with all the element
+    #[allow(clippy::redundant_clone)]
     let xt: UncheckedExtrinsicV4<_> = compose_extrinsic_offline!(
         api.clone().signer.unwrap(),
-        Call::Balances(BalancesCall::transfer(to.clone().into(), 42)),
+        Call::Balances(BalancesCall::transfer(to.clone(), 42)),
         api.get_nonce().unwrap(),
+        Era::mortal(period, h.number.into()),
         api.genesis_hash,
+        head,
         api.runtime_version.spec_version
     );
 
     println!("[+] Composed Extrinsic:\n {:?}\n", xt);
 
     // send and watch extrinsic until finalized
-    let tx_hash = api.send_extrinsic(xt.hex_encode()).unwrap();
-    println!("[+] Transaction got finalized. Hash: {:?}", tx_hash);
+    let blockh = api
+        .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
+        .unwrap();
+    println!("[+] Transaction got finalized in block {:?}", blockh);
 }
 
 pub fn get_node_url_from_cli() -> String {

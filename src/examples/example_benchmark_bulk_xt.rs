@@ -13,15 +13,18 @@
     limitations under the License.
 */
 
-//! This examples shows how to use the compose_extrinsic macro to create an extrinsic for any (custom)
-//! module, whereas the desired module and call are supplied as a string.
+//! This examples floates the node with a series of transactions
+// run this against test node with
+// > substrate-test-node --dev --execution native --ws-port 9979 -ltxpool=debug
 
 use clap::{load_yaml, App};
+
 use keyring::AccountKeyring;
+use node_template_runtime::{BalancesCall, Call};
 use sp_core::crypto::Pair;
 
 use substrate_api_client::{
-    compose_extrinsic, extrinsic::xt_primitives::UncheckedExtrinsicV4, Api, XtStatus,
+    compose_extrinsic_offline, extrinsic::xt_primitives::UncheckedExtrinsicV4, Api, XtStatus,
 };
 
 fn main() {
@@ -32,22 +35,36 @@ fn main() {
     let from = AccountKeyring::Alice.pair();
     let api = Api::new(format!("ws://{}", url)).set_signer(from);
 
-    // set the recipient
+    println!(
+        "[+] Alice's Account Nonce is {}\n",
+        api.get_nonce().unwrap()
+    );
+
+    // define the recipient
     let to = AccountKeyring::Bob.to_account_id();
 
-    // call Balances::transfer
-    // the names are given as strings
-    #[allow(clippy::redundant_clone)]
-    let xt: UncheckedExtrinsicV4<_> =
-        compose_extrinsic!(api.clone(), "Balances", "transfer", to, Compact(42 as u128));
+    let mut nonce = api.get_nonce().unwrap();
+    let first_nonce = nonce;
+    while nonce < first_nonce + 500 {
+        // compose the extrinsic with all the element
+        #[allow(clippy::redundant_clone)]
+        let xt: UncheckedExtrinsicV4<_> = compose_extrinsic_offline!(
+            api.clone().signer.unwrap(),
+            Call::Balances(BalancesCall::transfer(to.clone(), 1_000_000)),
+            nonce,
+            Era::Immortal,
+            api.genesis_hash,
+            api.genesis_hash,
+            api.runtime_version.spec_version
+        );
+        // send and watch extrinsic until finalized
+        println!("sending extrinsic with nonce {}", nonce);
+        let _blockh = api
+            .send_extrinsic(xt.hex_encode(), XtStatus::Ready)
+            .unwrap();
 
-    println!("[+] Composed Extrinsic:\n {:?}\n", xt);
-
-    // send and watch extrinsic until finalized
-    let tx_hash = api
-        .send_extrinsic(xt.hex_encode(), XtStatus::Finalized)
-        .unwrap();
-    println!("[+] Transaction got finalized. Hash: {:?}", tx_hash);
+        nonce += 1;
+    }
 }
 
 pub fn get_node_url_from_cli() -> String {

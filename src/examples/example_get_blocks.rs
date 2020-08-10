@@ -19,13 +19,12 @@
 #[macro_use]
 extern crate clap;
 
-use std::convert::TryFrom;
-
 use clap::App;
 
 use sp_core::sr25519;
 
-use substrate_api_client::node_metadata::Metadata;
+use node_template_runtime::{Block, Header, SignedBlock};
+use std::sync::mpsc::channel;
 use substrate_api_client::Api;
 
 fn main() {
@@ -34,18 +33,37 @@ fn main() {
 
     let api = Api::<sr25519::Pair>::new(format!("ws://{}", url));
 
-    let meta = Metadata::try_from(api.get_metadata()).unwrap();
+    let head = api.get_finalized_head().unwrap();
 
-    meta.print_overview();
-    meta.print_modules_with_calls();
-    meta.print_modules_with_events();
+    println!("Finalized Head:\n {} \n", head);
 
-    // print full substrate metadata json formatted
+    let h: Header = api.get_header(Some(head)).unwrap();
+    println!("Finalized header:\n {:?} \n", h);
+
+    let b: SignedBlock = api.get_signed_block(Some(head)).unwrap();
+    println!("Finalized signed block:\n {:?} \n", b);
+
     println!(
-        "{}",
-        Metadata::pretty_format(&api.get_metadata())
-            .unwrap_or_else(|| "pretty format failed".to_string())
-    )
+        "Latest Header: \n {:?} \n",
+        api.get_header::<Header>(None).unwrap()
+    );
+
+    println!(
+        "Latest block: \n {:?} \n",
+        api.get_block::<Block>(None).unwrap()
+    );
+
+    println!("Subscribing to finalized heads");
+    let (sender, receiver) = channel();
+    api.subscribe_finalized_heads(sender);
+
+    for _ in 0..5 {
+        let head: Header = receiver
+            .recv()
+            .map(|header| serde_json::from_str(&header).unwrap())
+            .unwrap();
+        println!("Got new Block {:?}", head);
+    }
 }
 
 pub fn get_node_url_from_cli() -> String {
