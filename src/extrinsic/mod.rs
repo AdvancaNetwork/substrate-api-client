@@ -78,9 +78,9 @@ macro_rules! compose_extrinsic_offline {
             extra.clone(),
             (
                 $runtime_spec_version,
+                $runtime_tx_version,
                 $genesis_hash,
                 $genesis_or_current_hash,
-                (),
                 (),
                 (),
                 (),
@@ -134,7 +134,7 @@ macro_rules! compose_extrinsic {
                     $api.genesis_hash,
                     $api.genesis_hash,
                     $api.runtime_version.spec_version,
-                    $api.runtime_version.tx_version
+                    $api.runtime_version.transaction_version
                 )
             } else {
                 UncheckedExtrinsicV4 {
