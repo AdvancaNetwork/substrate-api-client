@@ -48,11 +48,11 @@ fn main() {
     println!("[+] key prefix for System BlockHash map is {:?}", result);
 
     // get StorageDoubleMap
-    let result: u32 = api
-        .get_storage_double_map("TemplateModule", "SomeDoubleMap", 1_u32, 2_u32, None)
-        .or(Some(0))
-        .unwrap();
-    println!("[+] some double map (1,2) should be 3. Is {:?}", result);
+    // let result: u32 = api
+    //     .get_storage_double_map("TemplateModule", "SomeDoubleMap", 1_u32, 2_u32, None)
+    //     .or(Some(0))
+    //     .unwrap();
+    // println!("[+] some double map (1,2) should be 3. Is {:?}", result);
 
     // get Alice's AccountNonce with api.get_nonce()
     let signer = AccountKeyring::Alice.pair();

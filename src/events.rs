@@ -100,6 +100,11 @@ impl TryFrom<Metadata> for EventsDecoder {
         decoder.register_type_size::<crate::Moment>("Moment")?;
         decoder.register_type_size::<crate::Hash>("Hash")?;
         decoder.register_type_size::<crate::Balance>("Balance")?;
+        decoder.register_type_size::<node_primitives::AccountId>("AccountId")?;
+        decoder.register_type_size::<node_primitives::BlockNumber>("BlockNumber")?;
+        decoder.register_type_size::<node_primitives::Hash>("Hash")?;
+        decoder.register_type_size::<node_primitives::Balance>("Balance")?;
+        decoder.register_type_size::<node_primitives::Hash>("TaskId")?;
         // VoteThreshold enum index
         decoder.register_type_size::<u8>("VoteThreshold")?;
 
@@ -158,6 +163,7 @@ impl EventsDecoder {
         output: &mut W,
     ) -> Result<(), EventsError> {
         for arg in args {
+            println!("{:?}", arg);
             match arg {
                 EventArg::Vec(arg) => {
                     let len = <Compact<u32>>::decode(input)?;
